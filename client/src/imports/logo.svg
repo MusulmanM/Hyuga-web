@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 48" fill="none">
+  <rect width="120" height="48" rx="10" fill="#0E3A39"/>
+  <ellipse cx="24" cy="28" rx="14" ry="9" fill="#1B7A8C"/>
+  <path d="M14 28c3 2 3-2 6 0s3-2 6 0 3-2 6 0" stroke="#7FC2CC" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="44" y="22" fill="#E3C77E" font-family="Georgia, serif" font-size="16" font-weight="700">Hyuga</text>
+  <text x="44" y="36" fill="#DCEEEF" font-family="Arial, sans-serif" font-size="9" letter-spacing="1.5">SWIMMING POOL</text>
+</svg>
