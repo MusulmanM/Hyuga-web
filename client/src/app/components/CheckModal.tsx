@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-type View = 'home' | 'booking' | 'menu' | 'qr';
+type View = 'home' | 'booking' | 'menu';
 
 interface MenuItem {
   id: string;

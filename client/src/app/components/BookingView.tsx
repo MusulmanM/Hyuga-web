@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useCreateBookingMutation, useGetTapchansQuery } from '../services/api';
 
-type View = 'home' | 'booking' | 'menu' | 'qr';
+type View = 'home' | 'booking' | 'menu';
 
 interface BookingViewProps {
   onNavigate: (view: View) => void;
@@ -56,16 +56,15 @@ function apiErrorMessage(error: unknown) {
     if (typeof data === 'string') return data;
     if (typeof data === 'object' && data !== null) {
       const payload = data as { error?: string; detail?: string; message?: string };
-      return payload.error ?? payload.detail ?? payload.message ?? "API so'rovida xatolik yuz berdi.";
+      return payload.error ?? payload.detail ?? payload.message ?? 'Ошибка при запросе к API.';
     }
   }
   if (error instanceof Error) return error.message;
-  return 'API bilan aloqa qilishda xatolik yuz berdi.';
+  return 'Ошибка связи с сервером.';
 }
 
 interface Guests { adults: number; children: number; infants: number; }
 
-// ─── helpers ──────────────────────────────────────────────────
 function nodeLabel(n: TNode) {
   if (n.isBanket) return 'B';
   return String(n.id);
@@ -119,12 +118,9 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
   const primaryNode = NODES.find(n => n.id === primaryId) ?? null;
   const isBusy = (id: number) => busyIds.includes(id);
 
-  const tapchanPrice = selectedIds.reduce((sum, id) => {
-    const base = id === 15 ? 300000 : (NODES.find(n => n.id === id)?.isBanket ? 300000 : 150000);
-    return sum + base;
-  }, 0);
+  // ─── ТАПЧАН БЕСПЛАТНЫЙ: только гости оплачиваются ───
   const guestPrice = guests.adults * 150000 + guests.children * 80000;
-  const totalPrice = tapchanPrice + guestPrice;
+  const totalPrice = guestPrice;
 
   const canConfirm = selectedIds.length > 0 && selectedDate && arrivalTime;
 
@@ -136,20 +132,19 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
       return;
     }
 
+    // ─── ИСПРАВЛЕНИЕ: fallback если API тапчанов недоступен ───
     const tapchanDbIds = selectedIds
       .map(num => tapchans.find(t => t.number === num)?.id)
       .filter((id): id is number => id !== undefined);
 
-    if (tapchanDbIds.length !== selectedIds.length) {
-      setBookingError('Tapchan maʼlumotlari yuklanmadi. Sahifani yangilang.');
-      return;
-    }
+    // Если API не вернул тапчаны — используем номера как ID (fallback)
+    const finalTapchanIds = tapchanDbIds.length > 0 ? tapchanDbIds : selectedIds;
 
     setSubmitting(true);
     setBookingError('');
     try {
       await createBooking({
-        tapchans: tapchanDbIds,
+        tapchans: finalTapchanIds,
         date: selectedDate,
         arrival_time: arrivalTime!,
         kids_under_6: guests.infants,
@@ -176,14 +171,14 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, marginBottom: 44, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, letterSpacing: '.16em', textTransform: 'uppercase', color: '#BD5B38', marginBottom: 10, fontWeight: 500 }}>
-            Tapchanlar xaritasi
+            Карта тапчанов
           </div>
           <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(28px,3.4vw,42px)', color: '#182422', fontWeight: 600 }}>
-            Baseyn atrofidan joy tanlang
+            Выберите место вокруг бассейна
           </h2>
         </div>
         <p style={{ color: '#4B5C58', maxWidth: 420, fontSize: 15, lineHeight: 1.6 }}>
-          Yashil: bo'sh · Qizil: band · Tanlangan: oltin. Bosing va band qiling.
+          Зелёный: свободно · Красный: занято · Выбрано: золотой. Нажмите, чтобы забронировать.
         </p>
       </div>
 
@@ -200,25 +195,20 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
             )}
 
             {/* ── Pools ── */}
-            {/* Small left pool */}
             <rect x="194" y="92" width="96" height="264" rx="46" fill="#1B7A8C" opacity="0.9"/>
             <rect x="194" y="92" width="96" height="264" rx="46" fill="none" stroke="#7FC2CC" strokeWidth="1.5" opacity="0.6"/>
-            {/* Lane lines — small pool */}
             {[148, 192, 236, 280].map(ly => (
               <line key={ly} x1="198" y1={ly} x2="286" y2={ly} stroke="#DCEEEF" strokeWidth="1" opacity="0.25" strokeDasharray="4 4"/>
             ))}
-            <text x="242" y="232" textAnchor="middle" fill="#DCEEEF" fontSize="11" fontFamily="'IBM Plex Mono',monospace" opacity="0.7" fontWeight="500">KICHIK</text>
+            <text x="242" y="232" textAnchor="middle" fill="#DCEEEF" fontSize="11" fontFamily="'IBM Plex Mono',monospace" opacity="0.7" fontWeight="500">МАЛЫЙ</text>
 
-            {/* Large right pool */}
             <rect x="312" y="72" width="136" height="292" rx="56" fill="#1B7A8C"/>
             <rect x="312" y="72" width="136" height="292" rx="56" fill="none" stroke="#7FC2CC" strokeWidth="1.5" opacity="0.5"/>
-            {/* Lane lines — large pool */}
             {[140, 182, 224, 266, 308].map(ly => (
               <line key={ly} x1="316" y1={ly} x2="444" y2={ly} stroke="#DCEEEF" strokeWidth="1" opacity="0.2" strokeDasharray="4 4"/>
             ))}
-            {/* Water wave shimmer */}
             <path d="M320 218 c8 4 8-4 16 0 s8-4 16 0 s8-4 16 0 s8-4 16 0 s8-4 16 0" stroke="#DCEEEF" strokeWidth="1.2" fill="none" opacity="0.3" strokeLinecap="round"/>
-            <text x="380" y="228" textAnchor="middle" fill="#DCEEEF" fontSize="11" fontFamily="'IBM Plex Mono',monospace" opacity="0.7" fontWeight="500">ASOSIY</text>
+            <text x="380" y="228" textAnchor="middle" fill="#DCEEEF" fontSize="11" fontFamily="'IBM Plex Mono',monospace" opacity="0.7" fontWeight="500">ОСНОВНОЙ</text>
 
             {/* ── Tapchans ── */}
             {NODES.map(n => {
@@ -244,7 +234,7 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
                   <rect x={n.x} y={n.y} width={n.w} height={n.h} rx="6" fill={fill} stroke={stroke} strokeWidth="1.5"/>
                   {n.isBanket && (
                     <>
-                      <text x={nodeCx(n)} y={nodeCy(n) - 8} textAnchor="middle" fontSize="9" fill="#4C8C6B" fontFamily="'IBM Plex Mono',monospace" fontWeight="600" style={{ pointerEvents: 'none' }}>BANKET</text>
+                      <text x={nodeCx(n)} y={nodeCy(n) - 8} textAnchor="middle" fontSize="9" fill="#4C8C6B" fontFamily="'IBM Plex Mono',monospace" fontWeight="600" style={{ pointerEvents: 'none' }}>БАНКЕТ</text>
                       <text x={nodeCx(n)} y={nodeCy(n) + 8} textAnchor="middle" fontSize="13" fill={textColor} fontFamily="'IBM Plex Mono',monospace" fontWeight="700" style={{ pointerEvents: 'none' }}>{n.id}</text>
                     </>
                   )}
@@ -253,7 +243,6 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
                       {nodeLabel(n)}
                     </text>
                   )}
-                  {/* Busy X mark */}
                   {busy && (
                     <>
                       <line x1={(n.x ?? 0) + 6} y1={(n.y ?? 0) + 6} x2={(n.x ?? 0) + (n.w ?? 0) - 6} y2={(n.y ?? 0) + (n.h ?? 0) - 6} stroke="#B4523C" strokeWidth="1.5" opacity="0.5"/>
@@ -264,12 +253,11 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
               );
             })}
 
-            {/* Banket mode selection counter badge */}
             {banketMode && selectedIds.length > 0 && (
               <g>
                 <rect x="248" y="456" width="184" height="34" rx="17" fill="#C69A3E"/>
                 <text x="340" y="478" textAnchor="middle" fontSize="12" fill="#0E3A39" fontFamily="'Manrope',sans-serif" fontWeight="800">
-                  {selectedIds.length} / 6 ta tapchan tanlandi
+                  Выбрано {selectedIds.length} / 6
                 </text>
               </g>
             )}
@@ -277,7 +265,7 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
 
           {/* Legend */}
           <div style={{ display: 'flex', gap: 20, marginTop: 14, flexWrap: 'wrap', paddingLeft: 4 }}>
-            {[{ color: '#2A6058', stroke: '#4C8C6B', label: "Bo'sh" }, { color: '#5C2A22', stroke: '#B4523C', label: 'Band' }, { color: '#C69A3E', stroke: '#E3C77E', label: 'Tanlangan' }, { color: '#14514F', stroke: '#4C8C6B', label: 'Banket' }].map(l => (
+            {[{ color: '#2A6058', stroke: '#4C8C6B', label: 'Свободно' }, { color: '#5C2A22', stroke: '#B4523C', label: 'Занято' }, { color: '#C69A3E', stroke: '#E3C77E', label: 'Выбрано' }, { color: '#14514F', stroke: '#4C8C6B', label: 'Банкет' }].map(l => (
               <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#DCEEEF', fontWeight: 600 }}>
                 <span style={{ width: 14, height: 14, borderRadius: 3, background: l.color, border: `1.5px solid ${l.stroke}`, display: 'inline-block' }}/>
                 {l.label}
@@ -295,7 +283,6 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#E3C77E" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="#E3C77E" strokeWidth="2" strokeLinecap="round"/></svg>
               10:00 – 22:00
             </div>
-            {/* Banket toggle */}
             <button
               onClick={() => { setBanketMode(p => !p); if (banketMode) setSelectedIds(prev => prev.slice(0, 1)); }}
               style={{
@@ -309,7 +296,7 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
               }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              Banket
+              Банкет
             </button>
           </div>
 
@@ -319,8 +306,8 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }}>
                 <path d="M3 21V10l9-6 9 6v11h-6v-6H9v6H3z" stroke="#4B5C58" strokeWidth="1.5"/>
               </svg>
-              <p style={{ fontSize: 13.5 }}>Xaritadan tapchan tanlang</p>
-              {banketMode && <p style={{ fontSize: 12, color: '#BD5B38', marginTop: 6, fontWeight: 600 }}>Banket rejimi: 6 tagacha tanlov</p>}
+              <p style={{ fontSize: 13.5 }}>Выберите тапчан на карте</p>
+              {banketMode && <p style={{ fontSize: 12, color: '#BD5B38', marginTop: 6, fontWeight: 600 }}>Режим банкета: до 6 тапчанов</p>}
             </div>
           ) : (
             <div>
@@ -329,20 +316,20 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
                   <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(76,140,107,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke="#4C8C6B" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
-                  <p style={{ color: '#4C8C6B', fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", fontSize: 18 }}>Bron qilindi!</p>
+                  <p style={{ color: '#4C8C6B', fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", fontSize: 18 }}>Забронировано!</p>
                 </div>
               ) : (
                 <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                   <div>
                     <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: '#182422', fontWeight: 600 }}>
                       {banketMode && selectedIds.length > 1
-                        ? `${selectedIds.length} ta tapchan`
-                        : `Tapchan #${primaryId}`}
+                        ? `${selectedIds.length} тапчана`
+                        : `Тапчан №${primaryId}`}
                     </div>
-                    {primaryNode?.isBanket && <div style={{ fontSize: 11, color: '#4C8C6B', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Banket zonasi</div>}
+                    {primaryNode?.isBanket && <div style={{ fontSize: 11, color: '#4C8C6B', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Банкетная зона</div>}
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: 'rgba(76,140,107,0.12)', color: '#4C8C6B', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                    Bo'sh
+                    Бесплатно
                   </span>
                 </div>
               )}
@@ -352,7 +339,7 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
           {/* Date picker */}
           <div>
             <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#4B5C58', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8, fontFamily: "'Manrope',sans-serif" }}>
-              Sana
+              Дата
             </label>
             <input
               type="date"
@@ -372,11 +359,11 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
               <label style={{ fontSize: 11.5, fontWeight: 700, color: '#4B5C58', textTransform: 'uppercase', letterSpacing: '.06em', fontFamily: "'Manrope',sans-serif" }}>
-                Kelish vaqti
+                Время прибытия
               </label>
               {arrivalTime && (
                 <span style={{ fontSize: 11.5, color: '#4C8C6B', fontWeight: 600 }}>
-                  {arrivalTime} – Kechgacha (22:00)
+                  {arrivalTime} – до закрытия (22:00)
                 </span>
               )}
             </div>
@@ -398,7 +385,7 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
             </div>
             {!arrivalTime && (
               <p style={{ fontSize: 11.5, color: '#4B5C58', marginTop: 6, fontStyle: 'italic' }}>
-                Kelish vaqtini tanlang — kechgacha to'liq kun
+                Выберите время прибытия — до вечера (22:00)
               </p>
             )}
           </div>
@@ -406,12 +393,12 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
           {/* Guest counter */}
           <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 11.5, fontWeight: 700, color: '#4B5C58', textTransform: 'uppercase', letterSpacing: '.06em', fontFamily: "'Manrope',sans-serif", marginBottom: 2 }}>
-              Mehmonlar soni
+              Количество гостей
             </div>
             {[
-              { key: 'adults' as keyof Guests, label: '13 yoshdan katta', price: '150 000 so\'m', priceNum: 150000, color: '#0E3A39' },
-              { key: 'children' as keyof Guests, label: '6–12 yosh', price: '80 000 so\'m', priceNum: 80000, color: '#14514F' },
-              { key: 'infants' as keyof Guests, label: '6 yoshdan kichik', price: 'Tekin', priceNum: 0, color: '#4C8C6B' },
+              { key: 'adults' as keyof Guests, label: 'Старше 13 лет', price: '150 000 сум', priceNum: 150000, color: '#0E3A39' },
+              { key: 'children' as keyof Guests, label: '6–12 лет', price: '80 000 сум', priceNum: 80000, color: '#14514F' },
+              { key: 'infants' as keyof Guests, label: 'До 6 лет', price: 'Бесплатно', priceNum: 0, color: '#4C8C6B' },
             ].map(row => (
               <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -434,21 +421,15 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
           {/* Price summary */}
           {(totalPrice > 0 || selectedIds.length > 0) && (
             <div style={{ background: 'linear-gradient(135deg, #0E3A39, #14514F)', borderRadius: 14, padding: '14px 18px', color: '#FBF6EB' }}>
-              {selectedIds.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#DCEEEF', marginBottom: 6 }}>
-                  <span>Tapchan ({selectedIds.length} ta)</span>
-                  <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{tapchanPrice.toLocaleString('ru-RU')} so'm</span>
-                </div>
-              )}
               {guestPrice > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#DCEEEF', marginBottom: 6 }}>
-                  <span>Mehmonlar ({guests.adults + guests.children} kishi)</span>
-                  <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{guestPrice.toLocaleString('ru-RU')} so'm</span>
+                  <span>Гости ({guests.adults + guests.children} чел.)</span>
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{guestPrice.toLocaleString('ru-RU')} сум</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.15)', marginTop: 4 }}>
-                <span>Jami</span>
-                <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: '#E3C77E' }}>{totalPrice.toLocaleString('ru-RU')} so'm</span>
+                <span>Итого</span>
+                <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: '#E3C77E' }}>{totalPrice.toLocaleString('ru-RU')} сум</span>
               </div>
             </div>
           )}
@@ -469,7 +450,7 @@ export function BookingView({ onNavigate, onSetCartTapchan, isLoggedIn, onRequir
               transition: '.2s',
             }}
           >
-            {submitting ? 'Bron qilinmoqda...' : banketMode ? `Banket bron qilish (${selectedIds.length}/6)` : 'Bron qilish'}
+            {submitting ? 'Бронирование...' : banketMode ? `Забронировать банкет (${selectedIds.length}/6)` : 'Забронировать'}
           </button>
         </div>
       </div>

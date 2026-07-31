@@ -2,6 +2,31 @@
 
 A full-stack swimming pool booking and management system.
 
+## Quick start (Windows)
+
+Ikkala serverni birga: loyiha ildizidagi `start.bat` ni ishga tushiring.
+
+Yoki alohida:
+
+```powershell
+# Terminal 1 — Backend
+cd server
+.\start.bat
+
+# Terminal 2 — Frontend
+cd client
+.\start.bat
+```
+
+- Frontend: http://127.0.0.1:5173  
+- Backend API: http://127.0.0.1:8000/api/v1/  
+- Frontend QR admin: http://127.0.0.1:5173/admin-1324/  
+- Django admin: http://127.0.0.1:8000/admin-13245/
+
+Frontend `/api` so‘rovlarini Vite proxy orqali backendga yuboradi (CORS muammosiz).
+
+**Demo OTP:** `111111`
+
 This repository contains:
 
 - `server/`: Django backend with REST APIs, admin panel, authentication, QR code generation, and menu/order management.

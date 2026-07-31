@@ -264,7 +264,7 @@ export default function App() {
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
 
-    if (path.startsWith('/admin')) {
+    if (path === '/admin-1324' || path === '/admin-1324/') {
       setActiveView('adminQR');
       return;
     }

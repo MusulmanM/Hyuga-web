@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import logoImg from '../../imports/logo.svg';
+import Logo  from  "../../assets/Logo.jpg"
 
-type View = 'home' | 'booking' | 'menu' | 'qr';
+type View = 'home' | 'booking' | 'menu';
 
 interface TopBarProps {
   activeView: View;
@@ -16,7 +16,6 @@ export function TopBar({ activeView, onNavigate, cartCount }: TopBarProps) {
     { key: 'home', label: 'Bosh sahifa' },
     { key: 'booking', label: 'Tapchanlar' },
     { key: 'menu', label: 'Menyu' },
-    { key: 'qr', label: 'QR skaner' },
   ];
 
   const goTo = (view: View) => {
@@ -41,9 +40,9 @@ export function TopBar({ activeView, onNavigate, cartCount }: TopBarProps) {
         style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
       >
         <img
-          src={logoImg}
+          src={Logo}
           alt="Hyuga Swimming Pool"
-          style={{ height: 42, width: 'auto', objectFit: 'contain', borderRadius: 8, background: 'rgba(255,255,255,0.94)', padding: '2px 6px' }}
+          style={{ height: 50, width: 'auto', objectFit: 'contain', borderRadius: 8, background: 'rgba(255,255,255,0.94)', padding: '2px 6px' }}
         />
         <div style={{ textAlign: 'left' }}>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: '#FBF6EB', letterSpacing: '0.02em', lineHeight: 1.15 }}>

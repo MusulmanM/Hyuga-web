@@ -1,6 +1,6 @@
-import logoImg from '../../imports/logo.svg';
+import logoImg from '../../assets/Logo.jpg';
 
-type View = 'home' | 'booking' | 'menu' | 'qr';
+type View = 'home' | 'booking' | 'menu';
 
 interface FooterProps {
   onNavigate: (view: View) => void;
@@ -39,8 +39,8 @@ export function Footer({ onNavigate }: FooterProps) {
             <h4 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.1em', color: '#E3C77E', marginBottom: 14, fontWeight: 700, fontFamily: "'Manrope', sans-serif" }}>
               Aloqa
             </h4>
-            <a href="tel:+998901234567" style={{ display: 'block', fontSize: 13.5, marginBottom: 10, color: '#DCEEEF', textDecoration: 'none' }}>
-              +998 90 123 45 67
+            <a href="tel:+998958011060" style={{ display: 'block', fontSize: 13.5, marginBottom: 10, color: '#DCEEEF', textDecoration: 'none' }}>
+              +998 95 801 10 60
             </a>
             <span style={{ display: 'block', fontSize: 13.5, color: '#DCEEEF' }}>Chilonzor, Toshkent</span>
           </div>

@@ -1,24 +1,35 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const DEFAULT_API_URL = 'http://127.0.0.1:8000/api/v1/';
+const DEFAULT_API_URL = '/api/v1/';
 
-// ✅ Vite env xatosini oldini olish
-const getApiUrl = (): string => {
-  try {
-    const envUrl = (import.meta as any).env?.VITE_API_BASE_URL;
-    if (envUrl) return envUrl.replace(/\/?$/, '/');
-  } catch {
-    // ignore
-  }
+function getApiUrl(): string {
+  const envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (envUrl) return envUrl.replace(/\/?$/, '/');
   return DEFAULT_API_URL;
-};
+}
 
 export const API_BASE_URL = getApiUrl();
 
-export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+/** Absolute origin for media files (relative API uses Vite proxy / same host). */
+export const API_ORIGIN = (() => {
+  if (API_BASE_URL.startsWith('http')) {
+    return API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  }
+  if (typeof window !== 'undefined') return window.location.origin;
+  return 'http://127.0.0.1:8000';
+})();
 
 export function mediaUrl(path: string | null | undefined) {
   if (!path) return '';
+  // Absolute backend media → same-origin /media (Vite proxy) in dev
+  if (path.startsWith('http://127.0.0.1:8000/') || path.startsWith('http://localhost:8000/')) {
+    try {
+      const u = new URL(path);
+      return `${typeof window !== 'undefined' ? window.location.origin : ''}${u.pathname}`;
+    } catch {
+      return path;
+    }
+  }
   if (path.startsWith('http')) return path;
   return `${API_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`;
 }
@@ -128,6 +139,7 @@ export interface Booking {
 export interface GalleryPhoto {
   id: number;
   image: string;
+  title?: string;
 }
 
 export interface VerifyOtpResponse {
@@ -135,16 +147,38 @@ export interface VerifyOtpResponse {
   refresh: string;
 }
 
+import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query';
+
+const baseQuery = fetchBaseQuery({
+  baseUrl: API_BASE_URL,
+  prepareHeaders: (headers) => {
+    const token = getStoredToken();
+    if (token) headers.set('authorization', `Bearer ${token}`);
+    return headers;
+  },
+});
+
+const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
+  args,
+  api,
+  extraOptions
+) => {
+  let result = await baseQuery(args, api, extraOptions);
+  if (result.error && result.error.status === 401) {
+    // If we get a 401 Unauthorized, the token is likely expired or invalid.
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    }
+    // Retry without token or let the app handle the logged-out state
+    result = await baseQuery(args, api, extraOptions);
+  }
+  return result;
+};
+
 export const api = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers) => {
-      const token = getStoredToken();
-      if (token) headers.set('authorization', `Bearer ${token}`);
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ['Menu', 'Cart', 'Orders', 'Tapchans', 'Gallery'],
   endpoints: (builder) => ({
     sendOtp: builder.mutation<{ message: string; phone_number: string }, { phone_number: string }>({
